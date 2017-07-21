@@ -41,6 +41,7 @@ void MainWindow::loadFile(QString filePath)
     QFileInfo fileInfo(filePath);
     if(fileInfo.isFile()){
         emit sendToLoader(filePath);
+        currentTally = nullptr;
     }
 }
 
