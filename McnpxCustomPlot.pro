@@ -25,9 +25,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    plot/qcustomplot.cpp
+    plot/qcustomplot.cpp \
+    loader.cpp \
+    tally.cpp
 
 HEADERS  += mainwindow.h \
-    plot/qcustomplot.h
+    plot/qcustomplot.h \
+    loader.h \
+    tally.h
 
 FORMS    += mainwindow.ui
