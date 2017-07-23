@@ -22,17 +22,17 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
-    delete ui;
+
     for(Tally *tally : tallyes){
         tally->deleteLater();
     }
     loadingThread.wait();
     loadingThread.quit();
-    scatter->deleteLater();
+    delete scatter;
     for(QScatter3DSeries *series : seriesScale){
-        series->deleteLater();
+        delete series;
     }
-
+    delete ui;
 }
 
 void MainWindow::on_openFileButton_clicked()
