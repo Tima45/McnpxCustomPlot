@@ -25,8 +25,8 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
-    QThread loadingThread;
-    Loader loader;
+    QThread *loadingThread;
+    Loader *loader;
 
     QVector<Tally *> tallyes;
     Tally *currentTally = nullptr;

@@ -8,30 +8,33 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     initPlot();
     initScatter();
-    loader.tallyes = &tallyes;
-    loader.moveToThread(&loadingThread);
-    loadingThread.start();
-    connect(&loader,SIGNAL(errorWhileLoading(QString)),this,SLOT(errorWhileLoadingHendler(QString)),Qt::QueuedConnection);
-    connect(this,SIGNAL(sendToLoader(QString)),&loader,SLOT(loadTallyes(QString)),Qt::QueuedConnection);
-    connect(&loader,SIGNAL(progressUpdate(int)),this,SLOT(updateProgress(int)),Qt::QueuedConnection);
-    connect(&loader,SIGNAL(loadingFinished()),this,SLOT(loadingFinished()));
+    loader = new Loader;
+    loader->tallyes = &tallyes;
+    loadingThread = new QThread;
+    loader->moveToThread(loadingThread);
 
-
-
+    loadingThread->start();
+    connect(loader,SIGNAL(errorWhileLoading(QString)),this,SLOT(errorWhileLoadingHendler(QString)),Qt::QueuedConnection);
+    connect(this,SIGNAL(sendToLoader(QString)),loader,SLOT(loadTallyes(QString)),Qt::QueuedConnection);
+    connect(loader,SIGNAL(progressUpdate(int)),this,SLOT(updateProgress(int)),Qt::QueuedConnection);
+    connect(loader,SIGNAL(loadingFinished()),this,SLOT(loadingFinished()));
 }
 
 MainWindow::~MainWindow()
 {
-
     for(Tally *tally : tallyes){
         tally->deleteLater();
     }
-    loadingThread.wait();
-    loadingThread.quit();
-    delete scatter;
     for(QScatter3DSeries *series : seriesScale){
         delete series;
     }
+
+    loadingThread->terminate();
+    delete loader;
+    delete loadingThread;
+    delete scatter;
+
+
     delete ui;
 }
 
