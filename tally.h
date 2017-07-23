@@ -14,6 +14,7 @@ public:
     QVector<double> yRange;
     QVector<double> zRange;
     QVector<double> vals;
+    double maxAbsValue;
 signals:
 
 public slots:

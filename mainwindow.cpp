@@ -7,6 +7,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     initPlot();
+    initScatter();
     loader.tallyes = &tallyes;
     loader.moveToThread(&loadingThread);
     loadingThread.start();
@@ -27,6 +28,11 @@ MainWindow::~MainWindow()
     }
     loadingThread.wait();
     loadingThread.quit();
+    scatter->deleteLater();
+    for(QScatter3DSeries *series : seriesScale){
+        series->deleteLater();
+    }
+
 }
 
 void MainWindow::on_openFileButton_clicked()
@@ -89,6 +95,7 @@ void MainWindow::drawCurrentTally()
         ui->levelBox->setMaximum(currentTally->zRange.last());
         ui->levelBox->setValue(currentTally->zRange.first());
         dysplayAtLevel(currentTally->zRange.first());
+        dysplayAt3D();
     }
 }
 
@@ -119,6 +126,46 @@ void MainWindow::dysplayAtLevel(int level)
         //-----------------------------------------------------------------------
     }
 }
+
+void MainWindow::dysplayAt3D()
+{
+    if(currentTally != nullptr){
+        for(int i = 0; i < seriesScale.count(); i++){
+            seriesScale.at(i)->dataProxy()->removeItems(0,seriesScale.at(i)->dataProxy()->itemCount());
+        }
+        scatter->axisX()->setRange(currentTally->xRange.first(),currentTally->xRange.last());
+        scatter->axisY()->setRange(currentTally->yRange.first(),currentTally->yRange.last());
+        scatter->axisZ()->setRange(currentTally->zRange.first(),currentTally->zRange.last());
+
+        int xCount = currentTally->xRange.count()-1;
+        int yCount = currentTally->yRange.count()-1;
+        int zCount = currentTally->zRange.count()-1;
+
+        for(int yIndex = 0; yIndex < yCount; yIndex++){
+            for(int xIndex = 0; xIndex < xCount; xIndex++){
+                for(int zIndex = 0; zIndex < zCount; zIndex++){
+                    double value = currentTally->vals.at((zIndex*xCount*yCount)+(yIndex*xCount)+xIndex);
+                    if(value != 0){
+                        QScatterDataItem *item = new QScatterDataItem;
+                        float x = currentTally->xRange.at(xIndex+1);
+                        float y = currentTally->yRange.at(yIndex+1);
+                        float z = currentTally->zRange.at(zIndex+1);
+                        item->setPosition(QVector3D(x,y,z));
+
+                        int colorPosition = qRound((fabs(value)/currentTally->maxAbsValue)*seriesScaleCount);
+                        if(colorPosition >= 0 && colorPosition < seriesScaleCount){
+                            seriesScale.at(colorPosition)->dataProxy()->addItem(*item);
+                        }else{
+                            qDebug() << colorPosition << "wrong number";
+                            delete item;
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+}
 void MainWindow::initPlot()
 {
     ui->plot->setInteraction(QCP::iRangeDrag, true);
@@ -128,21 +175,39 @@ void MainWindow::initPlot()
     //-----------------------------------------------------------------------
     colorScale = new QCPColorScale(ui->plot);
     colorScale->setType(QCPAxis::atRight);
-    /*
-    g.clearColorStops();
-    g.setColorInterpolation(QCPColorGradient::ColorInterpolation::ciRGB);
-    g.setColorStopAt(0,QColor(0,0,255));
-    g.setColorStopAt(0.5,QColor(255,255,255));
-    g.setColorStopAt(1,QColor(255,0,0));*/
-
-    //g.setLevelCount(50);
-    colorScale->setGradient(QCPColorGradient::gpThermal);
+    g = QCPColorGradient(QCPColorGradient::gpThermal);
+    colorScale->setGradient(g);
     colorScale->setDataRange(QCPRange(-1,1));
     ui->plot->plotLayout()->addElement(0,1,colorScale);
     //-----------------------------------------------------------------------
     colorMap = new QCPColorMap(ui->plot->xAxis,ui->plot->yAxis);
     colorMap->setColorScale(colorScale);
     colorMap->setTightBoundary(true);
+
+}
+
+void MainWindow::initScatter()
+{
+    scatter = new Q3DScatter;
+
+    scatter->activeTheme()->setType(Q3DTheme::ThemeStoneMoss);
+    scatter->activeTheme()->setBackgroundEnabled(false);
+    scatter->activeTheme()->setLightStrength(0);
+    scatter->activeTheme()->setLabelBackgroundEnabled(false);
+
+    QWidget *w = QWidget::createWindowContainer(scatter);
+    w->setParent(ui->scatterContainer);
+    QGridLayout *l = new QGridLayout(ui->scatterContainer);
+    l->addWidget(w);
+    ui->scatterContainer->setLayout(l);
+    //-------
+    for(int i = 0; i < seriesScaleCount; i++){
+        QScatter3DSeries * newSeries = new QScatter3DSeries();
+        newSeries->setMesh(QAbstract3DSeries::MeshPoint);
+        newSeries->setBaseColor(QColor(g.color(i,QCPRange(0,seriesScaleCount))));
+        scatter->addSeries(newSeries);
+        seriesScale.append(newSeries);
+    }
 
 }
 

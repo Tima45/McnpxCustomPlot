@@ -62,8 +62,14 @@ bool Tally::loadFromFile(QTextStream &inputStream)
                             block += currentLine;
                         }
                         QStringList list = block.split(" ",QString::SkipEmptyParts);
+                        maxAbsValue = 0;
+                        double v = 0;
                         for(int i = 0; i < list.count(); i+=2){
-                            vals.append(list.at(i).toDouble());
+                            v = list.at(i).toDouble();
+                            vals.append(v);
+                            if(fabs(v) > maxAbsValue){
+                                maxAbsValue = fabs(v);
+                            }
                         }
                         if(valsCount != vals.count()){
                             return false;
