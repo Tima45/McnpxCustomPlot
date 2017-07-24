@@ -98,7 +98,7 @@ void MainWindow::drawCurrentTally()
         ui->levelBox->setMaximum(currentTally->zRange.last());
         ui->levelBox->setValue(currentTally->zRange.first());
         dysplayAtLevel(currentTally->zRange.first());
-        dysplayAt3D();
+        dysplayAt3D(ui->minimumValueBox->value());
     }
 }
 
@@ -130,15 +130,15 @@ void MainWindow::dysplayAtLevel(int level)
     }
 }
 
-void MainWindow::dysplayAt3D()
+void MainWindow::dysplayAt3D(double minimumValue)
 {
     if(currentTally != nullptr){
         for(int i = 0; i < seriesScale.count(); i++){
             seriesScale.at(i)->dataProxy()->removeItems(0,seriesScale.at(i)->dataProxy()->itemCount());
         }
         scatter->axisX()->setRange(currentTally->xRange.first(),currentTally->xRange.last());
-        scatter->axisY()->setRange(currentTally->yRange.first(),currentTally->yRange.last());
-        scatter->axisZ()->setRange(currentTally->zRange.first(),currentTally->zRange.last());
+        scatter->axisY()->setRange(currentTally->zRange.first(),currentTally->zRange.last());
+        scatter->axisZ()->setRange(currentTally->yRange.first(),currentTally->yRange.last());
 
         int xCount = currentTally->xRange.count()-1;
         int yCount = currentTally->yRange.count()-1;
@@ -148,19 +148,18 @@ void MainWindow::dysplayAt3D()
             for(int xIndex = 0; xIndex < xCount; xIndex++){
                 for(int zIndex = 0; zIndex < zCount; zIndex++){
                     double value = currentTally->vals.at((zIndex*xCount*yCount)+(yIndex*xCount)+xIndex);
-                    if(value != 0){
+                    if(fabs(value) > minimumValue){
                         QScatterDataItem *item = new QScatterDataItem;
                         float x = currentTally->xRange.at(xIndex+1);
-                        float y = currentTally->yRange.at(yIndex+1);
-                        float z = currentTally->zRange.at(zIndex+1);
+                        float y = currentTally->zRange.at(zIndex+1);
+                        float z = currentTally->yRange.at(yIndex+1);
                         item->setPosition(QVector3D(x,y,z));
 
                         int colorPosition = qRound((fabs(value)/currentTally->maxAbsValue)*seriesScaleCount);
                         if(colorPosition >= 0 && colorPosition < seriesScaleCount){
                             seriesScale.at(colorPosition)->dataProxy()->addItem(*item);
                         }else{
-                            qDebug() << colorPosition << "wrong number";
-                            delete item;
+                            seriesScale.last()->dataProxy()->addItem(*item);
                         }
                     }
                 }
@@ -193,6 +192,7 @@ void MainWindow::initScatter()
 {
     scatter = new Q3DScatter;
 
+    scatter->setOrthoProjection(true);
     scatter->activeTheme()->setType(Q3DTheme::ThemeStoneMoss);
     scatter->activeTheme()->setBackgroundEnabled(false);
     scatter->activeTheme()->setLightStrength(0);
@@ -217,4 +217,9 @@ void MainWindow::initScatter()
 void MainWindow::on_levelBox_valueChanged(int arg1)
 {
     dysplayAtLevel(arg1);
+}
+
+void MainWindow::on_minimumValueBox_valueChanged(double arg1)
+{
+    dysplayAt3D(arg1);
 }

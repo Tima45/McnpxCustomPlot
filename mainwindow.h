@@ -51,11 +51,13 @@ private slots:
     void on_tallyList_itemActivated(QListWidgetItem *item);
     void drawCurrentTally();
     void dysplayAtLevel(int level);
-    void dysplayAt3D();
+    void dysplayAt3D(double minimumValue);
     void initPlot();
     void initScatter();
 
     void on_levelBox_valueChanged(int arg1);
+
+    void on_minimumValueBox_valueChanged(double arg1);
 
 private:
     Ui::MainWindow *ui;
