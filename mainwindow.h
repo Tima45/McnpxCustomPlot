@@ -10,7 +10,7 @@
 #include "plot/qcustomplot.h"
 #include "loader.h"
 #include "tally.h"
-#include <QtDataVisualization/Q3DScatter>
+#include <QtDataVisualization>
 
 using namespace QtDataVisualization;
 
@@ -32,11 +32,11 @@ public:
     Tally *currentTally = nullptr;
 
     QCPColorGradient g;
-    QCPColorScale *colorScale;
-    QCPColorMap *colorMap;
 
     Q3DScatter *scatter;
-    QVector<QScatter3DSeries *> seriesScale;
+    QCustom3DVolume *volume;
+    QVector<QRgb> colorTableTransparent;
+    QVector<QRgb> colorTableSolid;
     int seriesScaleCount = 100;
 
 signals:
@@ -50,14 +50,11 @@ private slots:
     void displayTallyes();
     void on_tallyList_itemActivated(QListWidgetItem *item);
     void drawCurrentTally();
-    void dysplayAtLevel(int level);
-    void dysplayAt3D(double minimumValue);
-    void initPlot();
+    void dysplayAt3D();
     void initScatter();
 
-    void on_levelBox_valueChanged(int arg1);
 
-    void on_minimumValueBox_valueChanged(double arg1);
+    void on_transparentCkeck_clicked();
 
 private:
     Ui::MainWindow *ui;

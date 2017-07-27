@@ -1,12 +1,17 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+int roundToDivByFour(int value){
+    double t = value/4.0;
+    t = ceil(t);
+    return (int)(t*4);
+}
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    initPlot();
     initScatter();
     loader = new Loader;
     loader->tallyes = &tallyes;
@@ -25,16 +30,11 @@ MainWindow::~MainWindow()
     for(Tally *tally : tallyes){
         tally->deleteLater();
     }
-    for(QScatter3DSeries *series : seriesScale){
-        delete series;
-    }
 
     loadingThread->terminate();
     delete loader;
     delete loadingThread;
     delete scatter;
-
-
     delete ui;
 }
 
@@ -94,102 +94,78 @@ void MainWindow::on_tallyList_itemActivated(QListWidgetItem *item)
 void MainWindow::drawCurrentTally()
 {
     if(currentTally != nullptr){
-        ui->levelBox->setMinimum(currentTally->zRange.first());
-        ui->levelBox->setMaximum(currentTally->zRange.last());
-        ui->levelBox->setValue(currentTally->zRange.first());
-        dysplayAtLevel(currentTally->zRange.first());
-        dysplayAt3D(ui->minimumValueBox->value());
+        dysplayAt3D();
     }
 }
 
-void MainWindow::dysplayAtLevel(int level)
+
+void MainWindow::dysplayAt3D()
 {
     if(currentTally != nullptr){
-        int xCount = currentTally->xRange.count()-1;
-        int yCount = currentTally->yRange.count()-1;
-        int levelPosition = level+(-currentTally->zRange.first());
 
-        colorMap->data()->setSize(xCount,yCount);
-        colorMap->data()->setRange(QCPRange(currentTally->xRange.first(),currentTally->xRange.last()),QCPRange(currentTally->yRange.first(),currentTally->yRange.last()));
-
-
-        ui->plot->xAxis->setRange(currentTally->xRange.first(),currentTally->xRange.last());
-        ui->plot->yAxis->setRange(currentTally->yRange.first(),currentTally->yRange.last());
-
-
-        for(int yIndex = 0; yIndex < yCount; yIndex++){
-            for(int xIndex = 0; xIndex < xCount; xIndex++){
-                double value = currentTally->vals.at((levelPosition*xCount*yCount)+(yIndex*xCount)+xIndex);
-                colorMap->data()->setCell(xIndex,yIndex,value);
-            }
-        }
-
-        colorMap->rescaleDataRange();
-        ui->plot->replot();
-        //-----------------------------------------------------------------------
-    }
-}
-
-void MainWindow::dysplayAt3D(double minimumValue)
-{
-    if(currentTally != nullptr){
-        for(int i = 0; i < seriesScale.count(); i++){
-            seriesScale.at(i)->dataProxy()->removeItems(0,seriesScale.at(i)->dataProxy()->itemCount());
-        }
+        //OMG!
+        int xReal = currentTally->xRange.count()-1;
+        int zReal = currentTally->zRange.count()-1;
+        int yReal = currentTally->yRange.count()-1;
+        int xCount = roundToDivByFour(currentTally->xRange.count()-1);
+        int yCount = roundToDivByFour(currentTally->yRange.count()-1);
+        int zCount = roundToDivByFour(currentTally->zRange.count()-1);
+        int xExtraBlocks = xCount-xReal;
+        int yExtraBlocks = yCount-yReal;
+        int zExtraBlocks = zCount-zReal;
+        double xBlockSize = fabs(currentTally->xRange.last() - currentTally->xRange.first())/xCount;
+        double yBlockSize = fabs(currentTally->yRange.last() - currentTally->yRange.first())/yCount;
+        double zBlockSize = fabs(currentTally->zRange.last() - currentTally->zRange.first())/zCount;
+        double xExtraSpace = xExtraBlocks*xBlockSize;
+        double yExtraSpace = yExtraBlocks*yBlockSize;
+        double zExtraSpace = zExtraBlocks*zBlockSize;
         scatter->axisX()->setRange(currentTally->xRange.first(),currentTally->xRange.last());
         scatter->axisY()->setRange(currentTally->zRange.first(),currentTally->zRange.last());
         scatter->axisZ()->setRange(currentTally->yRange.first(),currentTally->yRange.last());
-
-        int xCount = currentTally->xRange.count()-1;
-        int yCount = currentTally->yRange.count()-1;
-        int zCount = currentTally->zRange.count()-1;
-
-        for(int yIndex = 0; yIndex < yCount; yIndex++){
-            for(int xIndex = 0; xIndex < xCount; xIndex++){
-                for(int zIndex = 0; zIndex < zCount; zIndex++){
-                    double value = currentTally->vals.at((zIndex*xCount*yCount)+(yIndex*xCount)+xIndex);
-                    if(fabs(value) > minimumValue){
-                        QScatterDataItem *item = new QScatterDataItem;
-                        float x = currentTally->xRange.at(xIndex+1);
-                        float y = currentTally->zRange.at(zIndex+1);
-                        float z = currentTally->yRange.at(yIndex+1);
-                        item->setPosition(QVector3D(x,y,z));
-
-                        int colorPosition = qRound((fabs(value)/currentTally->maxAbsValue)*seriesScaleCount);
-                        if(colorPosition >= 0 && colorPosition < seriesScaleCount){
-                            seriesScale.at(colorPosition)->dataProxy()->addItem(*item);
-                        }else{
-                            seriesScale.last()->dataProxy()->addItem(*item);
-                        }
-                    }
+        double xSize = (currentTally->xRange.last() - currentTally->xRange.first())+xExtraSpace;
+        double ySize = (currentTally->yRange.last() - currentTally->yRange.first())+yExtraSpace;
+        double zSize = (currentTally->zRange.last() - currentTally->zRange.first())+zExtraSpace;
+        volume->setScaling(QVector3D(xSize,ySize,zSize));
+        double xCenter = (scatter->axisX()->max() + scatter->axisX()->min()) / 2.0f;
+        double yCenter = (scatter->axisY()->max() + scatter->axisY()->min()) / 2.0f;
+        double zCenter = (scatter->axisZ()->max() + scatter->axisZ()->min()) / 2.0f;
+        xCenter += xExtraSpace/2.0;
+        yCenter -= yExtraSpace/2.0;
+        zCenter += zExtraSpace/2.0;
+        volume->setPosition(QVector3D(xCenter,yCenter,zCenter));
+        volume->setScalingAbsolute(false);
+        volume->setTextureWidth(xCount);
+        volume->setTextureHeight(yCount);
+        volume->setTextureDepth(zCount);
+        QVector<uchar> newData;
+        for(int zIndex = 0; zIndex < zCount; zIndex++){
+            for(int yIndex = 0; yIndex < yCount; yIndex++){
+                for(int xIndex = 0; xIndex < xCount; xIndex++){
+                    newData.append(0);
                 }
             }
         }
+        for(int zIndex = 0; zIndex < zReal; zIndex++){
+            for(int yIndex = 0; yIndex < yReal; yIndex++){
+                for(int xIndex = 0; xIndex < xReal; xIndex++){
+
+                    int dataPosition = (zIndex*xReal*yReal)+(yIndex*xReal)+xIndex;
+                    int place = (zIndex*xCount*yCount)+(yIndex*xCount)+xIndex;
+                    double value = currentTally->vals.at(dataPosition);
+                    newData[place] = (uchar)(255*fabs(value)/currentTally->maxAbsValue);
+                }
+            }
+        }
+        volume->setTextureData(new QVector<uchar>(newData));
+        volume->setRotation(QQuaternion::fromAxisAndAngle(1,0,0,90));
 
     }
-}
-void MainWindow::initPlot()
-{
-    ui->plot->setInteraction(QCP::iRangeDrag, true);
-    ui->plot->setInteraction(QCP::iRangeZoom, true);
-    ui->plot->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
-    ui->plot->axisRect()->setRangeZoom(Qt::Horizontal | Qt::Vertical);
-    //-----------------------------------------------------------------------
-    colorScale = new QCPColorScale(ui->plot);
-    colorScale->setType(QCPAxis::atRight);
-    g = QCPColorGradient(QCPColorGradient::gpThermal);
-    colorScale->setGradient(g);
-    colorScale->setDataRange(QCPRange(-1,1));
-    ui->plot->plotLayout()->addElement(0,1,colorScale);
-    //-----------------------------------------------------------------------
-    colorMap = new QCPColorMap(ui->plot->xAxis,ui->plot->yAxis);
-    colorMap->setColorScale(colorScale);
-    colorMap->setTightBoundary(true);
-
 }
 
 void MainWindow::initScatter()
 {
+    g = QCPColorGradient(QCPColorGradient::gpThermal);
+
     scatter = new Q3DScatter;
 
     scatter->setOrthoProjection(true);
@@ -198,28 +174,44 @@ void MainWindow::initScatter()
     scatter->activeTheme()->setLightStrength(0);
     scatter->activeTheme()->setLabelBackgroundEnabled(false);
 
+    scatter->axisX()->setTitle("X");
+    scatter->axisY()->setTitle("Y");
+    scatter->axisZ()->setTitle("Z");
+    scatter->setAspectRatio(1);
+
+
+    scatter->axisX()->setTitleVisible(true);
+    scatter->axisY()->setTitleVisible(true);
+    scatter->axisZ()->setTitleVisible(true);
+    scatter->setOrthoProjection(true);
+    //-------
     QWidget *w = QWidget::createWindowContainer(scatter);
     w->setParent(ui->scatterContainer);
     QGridLayout *l = new QGridLayout(ui->scatterContainer);
     l->addWidget(w);
     ui->scatterContainer->setLayout(l);
-    //-------
-    for(int i = 0; i < seriesScaleCount; i++){
-        QScatter3DSeries * newSeries = new QScatter3DSeries();
-        newSeries->setMesh(QAbstract3DSeries::MeshPoint);
-        newSeries->setBaseColor(QColor(g.color(i,QCPRange(0,seriesScaleCount))));
-        scatter->addSeries(newSeries);
-        seriesScale.append(newSeries);
+    //----------------
+    volume = new QCustom3DVolume;
+
+
+    for(int i = 0; i < 256; i++){
+        QColor c = QColor(g.color(i,QCPRange(0,256)));
+        colorTableSolid.append(c.rgb());
+        c.setAlpha(i);
+        colorTableTransparent.append(c.rgba());
     }
 
+    colorTableSolid[0] = QColor(0,0,0,0).rgba();
+    volume->setTextureFormat(QImage::Format_Indexed8);
+    volume->setColorTable(colorTableSolid);
+    scatter->addCustomItem(volume);
 }
 
-void MainWindow::on_levelBox_valueChanged(int arg1)
+void MainWindow::on_transparentCkeck_clicked()
 {
-    dysplayAtLevel(arg1);
-}
-
-void MainWindow::on_minimumValueBox_valueChanged(double arg1)
-{
-    dysplayAt3D(arg1);
+    if(ui->transparentCkeck->isChecked()){
+        volume->setColorTable(colorTableTransparent);
+    }else{
+        volume->setColorTable(colorTableSolid);
+    }
 }
