@@ -56,6 +56,14 @@ private slots:
 
     void on_transparentCkeck_clicked();
 
+    void on_showSliceCheck_clicked();
+
+    void on_xSliceSlider_valueChanged(int value);
+
+    void on_ySliceSlider_valueChanged(int value);
+
+    void on_zSliceSlider_valueChanged(int value);
+
 private:
     Ui::MainWindow *ui;
 };

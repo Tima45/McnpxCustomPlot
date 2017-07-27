@@ -23,6 +23,10 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this,SIGNAL(sendToLoader(QString)),loader,SLOT(loadTallyes(QString)),Qt::QueuedConnection);
     connect(loader,SIGNAL(progressUpdate(int)),this,SLOT(updateProgress(int)),Qt::QueuedConnection);
     connect(loader,SIGNAL(loadingFinished()),this,SLOT(loadingFinished()));
+
+    ui->xSliceLabel->setScaledContents(true);
+    ui->ySliceLabel->setScaledContents(true);
+    ui->zSliceLabel->setScaledContents(true);
 }
 
 MainWindow::~MainWindow()
@@ -158,7 +162,9 @@ void MainWindow::dysplayAt3D()
         }
         volume->setTextureData(new QVector<uchar>(newData));
         volume->setRotation(QQuaternion::fromAxisAndAngle(1,0,0,90));
-
+        ui->xSliceSlider->setMaximum(xReal);
+        ui->ySliceSlider->setMaximum(yReal);
+        ui->zSliceSlider->setMaximum(zReal);
     }
 }
 
@@ -193,7 +199,6 @@ void MainWindow::initScatter()
     //----------------
     volume = new QCustom3DVolume;
 
-
     for(int i = 0; i < 256; i++){
         QColor c = QColor(g.color(i,QCPRange(0,256)));
         colorTableSolid.append(c.rgb());
@@ -213,5 +218,64 @@ void MainWindow::on_transparentCkeck_clicked()
         volume->setColorTable(colorTableTransparent);
     }else{
         volume->setColorTable(colorTableSolid);
+    }
+}
+
+void MainWindow::on_showSliceCheck_clicked()
+{
+    if(ui->showSliceCheck->isChecked()){
+        volume->setDrawSlices(true);
+    }else{
+        volume->setDrawSlices(false);
+    }
+}
+
+void MainWindow::on_xSliceSlider_valueChanged(int value)
+{
+    if(currentTally != nullptr){
+        if(ui->showSliceCheck->isChecked()){
+            volume->setSliceIndexX(value);
+        }
+
+        QPixmap p = QPixmap::fromImage(volume->renderSlice(Qt::XAxis,value));
+
+        QTransform t;
+        t.rotate(-90);
+        p = p.transformed(t);
+        ui->xSliceLabel->setPixmap(p);
+
+    }
+}
+
+void MainWindow::on_ySliceSlider_valueChanged(int value)
+{
+    if(currentTally != nullptr){
+        if(ui->showSliceCheck->isChecked()){
+            volume->setSliceIndexY(value);
+        }
+        QPixmap p = QPixmap::fromImage(volume->renderSlice(Qt::YAxis,value));
+        /*
+        QTransform t;
+        t.rotate(-90);
+        p = p.transformed(t);*/
+        ui->ySliceLabel->setPixmap(p);
+    }
+}
+
+void MainWindow::on_zSliceSlider_valueChanged(int value)
+{
+    if(currentTally != nullptr){
+        if(ui->showSliceCheck->isChecked()){
+            volume->setSliceIndexZ(value);
+        }
+        QPixmap p = QPixmap::fromImage(volume->renderSlice(Qt::ZAxis,value));
+
+        QTransform t;
+        t.rotate(180);
+
+        p = p.transformed(t);
+        QImage pp = p.toImage();
+        p = QPixmap::fromImage(pp.mirrored(true,false));
+        ui->zSliceLabel->setPixmap(p);
     }
 }
