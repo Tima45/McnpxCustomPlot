@@ -27,6 +27,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->xSliceLabel->setScaledContents(true);
     ui->ySliceLabel->setScaledContents(true);
     ui->zSliceLabel->setScaledContents(true);
+
+    doIt1();
 }
 
 MainWindow::~MainWindow()
@@ -40,6 +42,104 @@ MainWindow::~MainWindow()
     delete loadingThread;
     delete scatter;
     delete ui;
+}
+
+void MainWindow::doIt1()
+{
+    Tally *newTally = new Tally();
+    newTally->name = "test";
+
+    double xmin = -15;
+    double xmax = 15;
+    double ymin = -15;
+    double ymax = 15;
+    double zmin = -10;
+    double zmax = 20;
+
+    int zCount = 120;
+    int yCount = 120;
+    int xCount = 120;
+
+    double dx = (xmax-xmin)/(xCount);
+    double dy = (ymax-ymin)/(yCount);
+    double dz = (zmax-zmin)/(zCount);
+
+    newTally->xRange.append(xmin);
+    for(int i = 1; i < xCount+1; i++){
+        newTally->xRange.append(newTally->xRange.last()+dx);
+    }
+    newTally->yRange.append(ymin);
+    for(int i = 1; i < yCount+1; i++){
+        newTally->yRange.append(newTally->yRange.last()+dy);
+    }
+    newTally->zRange.append(zmin);
+    for(int i = 1; i < zCount+1; i++){
+        newTally->zRange.append(newTally->zRange.last()+dz);
+    }
+    qDebug() << newTally->xRange;
+    qDebug() << newTally->xRange.count();
+
+    double xTumour = 0;
+    double yTumour = 0;
+    double zTumour = 7.8;
+    double r1 = 1.5;
+
+    double xh1 = 0;
+    double yh1 = 0;
+    double zh1 = 3.5;
+
+    double xh2 = 0;
+    double yh2 = 0;
+    double zh2 = 2.5;
+
+    double xh3 = 0;
+    double yh3 = 0;
+    double zh3 = 2.5;
+
+
+
+    double kx = (xCount-1)/(newTally->xRange.last()-newTally->xRange.first());
+    double bx = kx*(-newTally->xRange.first());
+
+    double ky = (yCount-1)/(newTally->yRange.last()-newTally->yRange.first());
+    double by = ky*(-newTally->yRange.first());
+
+    double kz = (zCount-1)/(newTally->zRange.last()-newTally->zRange.first());
+    double bz = kz*(-newTally->zRange.first());
+
+
+    for(int z = 0; z < zCount; z++){
+        for(int y = 0; y < yCount; y++){
+            for(int x = 0; x < xCount; x++){
+                newTally->vals.append(0);
+                double currentx = ((x)-bx)/kx;
+                double currenty = ((y)-by)/ky;
+                double currentz = ((z)-bz)/kz;
+
+                double r11 = sqrt(powf(currentx-xTumour,2)+powf(currenty-yTumour,2)+powf(currentz-zTumour,2));
+                double r22 = powf((currentx-xh1)/6.0,2)+powf((currenty-yh1)/9.0,2)+powf((currentz-1-zh1)/6.5,2);
+                double r33 = powf((currentx-xh2)/6.8,2)+powf((currenty-yh2)/9.8,2)+powf((currentz-zh2)/8.3,2);
+                double r44 = powf((currentx-xh3)/7.3,2)+powf((currenty-yh3)/10.3,2)+powf((currentz-zh3)/8.8,2);
+                double dd = 0.05;
+                if(r11 < r1+dd && r11 > r11-dd){
+                    newTally->vals[newTally->vals.count()-1] = (255);
+                }
+
+                if(r22 < 1+dd && r22 > 1-dd){
+                    newTally->vals[newTally->vals.count()-1] = (128);
+                }
+                if(r33 < 1+dd && r33 > 1-dd){
+                    newTally->vals[newTally->vals.count()-1] = (64);
+                }
+                if(r44 < 1+dd && r44 > 1-dd){
+                    newTally->vals[newTally->vals.count()-1] = (32);
+                }
+            }
+        }
+    }
+    newTally->maxAbsValue = 255;
+    tallyes.append(newTally);
+    displayTallyes();
 }
 
 void MainWindow::on_openFileButton_clicked()
@@ -106,9 +206,9 @@ void MainWindow::drawCurrentTally()
 void MainWindow::dysplayAt3D()
 {
     if(currentTally != nullptr){
-
         //OMG!
         int xReal = currentTally->xRange.count()-1;
+        qDebug() << xReal;
         int zReal = currentTally->zRange.count()-1;
         int yReal = currentTally->yRange.count()-1;
         int xCount = roundToDivByFour(currentTally->xRange.count()-1);

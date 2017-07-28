@@ -39,6 +39,7 @@ public:
     QVector<QRgb> colorTableSolid;
     int seriesScaleCount = 100;
 
+    void doIt1();
 signals:
     void sendToLoader(QString fileName);
 private slots:
