@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QTextStream>
 #include <QVector>
+#include <QFile>
 class Tally : public QObject
 {
     Q_OBJECT
@@ -19,6 +20,7 @@ signals:
 
 public slots:
     bool loadFromFile(QTextStream &inputStream);
+    bool loadSingleFromFile(QString fileName);
 };
 
 #endif // TALLY_H

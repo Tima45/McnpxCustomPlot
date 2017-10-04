@@ -40,6 +40,7 @@ public:
     int seriesScaleCount = 100;
 
     void doIt1();
+    void doIt2();
 signals:
     void sendToLoader(QString fileName);
 private slots:
@@ -64,6 +65,7 @@ private slots:
     void on_ySliceSlider_valueChanged(int value);
 
     void on_zSliceSlider_valueChanged(int value);
+
 
 private:
     Ui::MainWindow *ui;

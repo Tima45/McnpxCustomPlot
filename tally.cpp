@@ -91,3 +91,24 @@ bool Tally::loadFromFile(QTextStream &inputStream)
     }
     return true;
 }
+
+bool Tally::loadSingleFromFile(QString fileName)
+{
+    QFile f(fileName);
+    if(f.open(QIODevice::ReadOnly | QIODevice::Text)){
+        //------------------------------------------------------------------
+        QTextStream inputTextStream(&f);
+        QString rawLine;
+        rawLine = inputTextStream.readLine();
+        rawLine = inputTextStream.readLine();
+        rawLine = inputTextStream.readLine();
+        QStringList list = rawLine.split(" ",QString::SkipEmptyParts);
+        if(list.count() == 2){
+            rawLine = inputTextStream.readLine();
+            if(!loadFromFile(inputTextStream)){
+                return false;
+            }
+        }
+    }
+    return true;
+}

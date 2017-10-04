@@ -28,7 +28,10 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->ySliceLabel->setScaledContents(true);
     ui->zSliceLabel->setScaledContents(true);
 
+    /*
     doIt1();
+    doIt2();
+    */
 }
 
 MainWindow::~MainWindow()
@@ -76,8 +79,6 @@ void MainWindow::doIt1()
     for(int i = 1; i < zCount+1; i++){
         newTally->zRange.append(newTally->zRange.last()+dz);
     }
-    qDebug() << newTally->xRange;
-    qDebug() << newTally->xRange.count();
 
     double xTumour = 0;
     double yTumour = 0;
@@ -140,6 +141,206 @@ void MainWindow::doIt1()
     newTally->maxAbsValue = 255;
     tallyes.append(newTally);
     displayTallyes();
+}
+
+void MainWindow::doIt2()
+{
+    Tally *resultTally = new Tally();
+    resultTally->name = "Result dose";
+
+    Tally *HTD14m = new Tally();
+    HTD14m->loadSingleFromFile("D:/users/Tima45/lz/Tima Dose/HTD14m");
+
+    Tally *HTD24m = new Tally();
+    HTD24m->loadSingleFromFile("D:/users/Tima45/lz/Tima Dose/HTD24m");
+
+    Tally *HTD34m = new Tally();
+    HTD34m->loadSingleFromFile("D:/users/Tima45/lz/Tima Dose/HTD34m");
+
+    Tally *HTD44m = new Tally();
+    HTD44m->loadSingleFromFile("D:/users/Tima45/lz/Tima Dose/HTD44m");
+
+    qDebug() << HTD14m->vals.count();
+
+
+    resultTally->xRange = HTD14m->xRange;
+    resultTally->yRange = HTD14m->yRange;
+    resultTally->zRange = HTD14m->zRange;
+
+    int xReal = resultTally->xRange.count()-1;
+    int zReal = resultTally->zRange.count()-1;
+    int yReal = resultTally->yRange.count()-1;
+
+
+    double xTumour = 0;
+    double yTumour = 0;
+    double zTumour = 7.8;
+    double r1 = 1.5;
+
+    double xh1 = 0;
+    double yh1 = 0;
+    double zh1 = 3.5;
+
+    double xh2 = 0;
+    double yh2 = 0;
+    double zh2 = 2.5;
+
+    double xh3 = 0;
+    double yh3 = 0;
+    double zh3 = 2.5;
+
+    double kx = (xReal-1)/(resultTally->xRange.last()-resultTally->xRange.first());
+    double bx = kx*(-resultTally->xRange.first());
+
+    double ky = (yReal-1)/(resultTally->yRange.last()-resultTally->yRange.first());
+    double by = ky*(-resultTally->yRange.first());
+
+    double kz = (zReal-1)/(resultTally->zRange.last()-resultTally->zRange.first());
+    double bz = kz*(-resultTally->zRange.first());
+
+
+
+    double maxAbsVal = 0;
+
+    for(int z = 0; z < zReal; z++){
+        for(int y = 0; y < yReal; y++){
+            for(int x = 0; x < xReal; x++){
+
+                double currentx = ((x)-bx)/kx;
+                double currenty = ((y)-by)/ky;
+                double currentz = ((z)-bz)/kz;
+
+                double r11 = sqrt(powf(currentx-xTumour,2)+powf(currenty-yTumour,2)+powf(currentz-zTumour,2));
+                double r22 = powf((currentx-xh1)/6.0,2)+powf((currenty-yh1)/9.0,2)+powf((currentz-1-zh1)/6.5,2);
+                double r33 = powf((currentx-xh2)/6.8,2)+powf((currenty-yh2)/9.8,2)+powf((currentz-zh2)/8.3,2);
+                double r44 = powf((currentx-xh3)/7.3,2)+powf((currenty-yh3)/10.3,2)+powf((currentz-zh3)/8.8,2);
+
+                
+                int dataPosition = (z*xReal*yReal)+(y*xReal)+x;
+
+                double HTD14mvalue = HTD14m->vals.at(dataPosition);
+                double HTD24mvalue = HTD24m->vals.at(dataPosition);
+                double HTD34mvalue = HTD34m->vals.at(dataPosition);
+                double HTD44mvalue = HTD44m->vals.at(dataPosition);
+
+                
+                if(r11 <= r1){
+                    HTD14mvalue *= (5250*3.8);
+                }
+                if(r22 > r1 && r22 <= zh1){
+                    HTD14mvalue *= 1950;
+                }
+                if(r33 > zh1 && r33 <= zh2){
+                    HTD14mvalue *= 1;
+                }
+                if(r44 > zh2 && r44 <= zh3){
+                    HTD14mvalue *= 1625;
+                }
+                if(r44 < zh3){
+                    HTD24mvalue *= 3.2;
+                    HTD34mvalue *= 3.2;
+                    HTD44mvalue *= 1;
+                }
+
+                resultTally->vals.append(HTD14mvalue + HTD24mvalue + HTD34mvalue + HTD44mvalue);
+                if(fabs(resultTally->vals.last()) > maxAbsVal){
+                    maxAbsVal = fabs(resultTally->vals.last());
+                }
+
+            }
+        }
+    }
+
+    resultTally->maxAbsValue = maxAbsVal;
+    tallyes.append(resultTally);
+    displayTallyes();
+
+    QFile resultFile("D:/users/Tima45/lz/Tima Dose/Result");
+    resultFile.open(QIODevice::WriteOnly | QIODevice::Text);
+    QTextStream out(&resultFile);
+    out << "mcnpx      2.5.0  01/10/17 12:00:00   45    1000000      817482696\n";
+    out << " c     Created on: Monday, October 1, 2017 at 12:00  \n";
+    out << "ntal     1\n";
+    out << "    1\n";
+    out << "tally    1   -1   -1\n";
+    out << "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n";
+    out << "f  1771561    0  121  121  121\n";
+
+    int colsCount = 0;
+    out.setFieldWidth(13);
+    for(int i = 0; i < resultTally->xRange.count(); i++){
+        colsCount++;
+
+        if(colsCount == 6){
+            out << QString::number(resultTally->xRange.at(i),'E');
+            out.setFieldWidth(0);
+            out << "\n";
+            out.setFieldWidth(13);
+            colsCount = 0;
+        }else{
+            out << QString::number(resultTally->xRange.at(i),'E')+" ";
+        }
+    }
+    out.setFieldWidth(0);
+    out << "\n";
+    colsCount = 0;
+    out.setFieldWidth(13);
+    for(int i = 0; i < resultTally->yRange.count(); i++){
+        colsCount++;
+
+        if(colsCount == 6){
+            out << QString::number(resultTally->yRange.at(i),'E');
+            out.setFieldWidth(0);
+            out << "\n";
+            out.setFieldWidth(13);
+            colsCount = 0;
+        }else{
+            out << QString::number(resultTally->yRange.at(i),'E')+" ";
+        }
+    }
+    out.setFieldWidth(0);
+    out << "\n";
+    colsCount = 0;
+    out.setFieldWidth(13);
+    for(int i = 0; i < resultTally->zRange.count(); i++){
+        colsCount++;
+
+        if(colsCount == 6){
+            out << QString::number(resultTally->zRange.at(i),'E');
+            out.setFieldWidth(0);
+            out << "\n";
+            out.setFieldWidth(13);
+            colsCount = 0;
+        }else{
+            out << QString::number(resultTally->zRange.at(i),'E')+" ";
+        }
+    }
+    out.setFieldWidth(0);
+    out << "\nd        1\n";
+    out << "u        1\n";
+    out << "s        1\n";
+    out << "m        1\n";
+    out << "c        1\n";
+    out << "e        1\n";
+    out << "t        1\n";
+    out << "vals\n";
+    out.setFieldWidth(21);
+    colsCount = 0;
+    for(int i = 0; i < resultTally->vals.count(); i++){
+        QString str = "  "+QString::number(resultTally->vals.at(i),'E')+" 0.0000";
+        out << str;
+        colsCount++;
+        if(colsCount == 4){
+            colsCount = 0;
+            out.setFieldWidth(0);
+            out << "\n";
+            out.setFieldWidth(21);
+        }
+    }
+
+
+
+    resultFile.close();
 }
 
 void MainWindow::on_openFileButton_clicked()
@@ -241,6 +442,23 @@ void MainWindow::dysplayAt3D()
         volume->setTextureWidth(xCount);
         volume->setTextureHeight(yCount);
         volume->setTextureDepth(zCount);
+
+        double xTumour = 0;
+        double yTumour = 0;
+        double zTumour = 7.8;
+        double r1 = 1.5;
+
+        double kx = (xCount-1)/(currentTally->xRange.last()-currentTally->xRange.first());
+        double bx = kx*(-currentTally->xRange.first());
+
+        double ky = (yCount-1)/(currentTally->yRange.last()-currentTally->yRange.first());
+        double by = ky*(-currentTally->yRange.first());
+
+        double kz = (zCount-1)/(currentTally->zRange.last()-currentTally->zRange.first());
+        double bz = kz*(-currentTally->zRange.first());
+
+
+
         QVector<uchar> newData;
         for(int zIndex = 0; zIndex < zCount; zIndex++){
             for(int yIndex = 0; yIndex < yCount; yIndex++){
@@ -256,7 +474,19 @@ void MainWindow::dysplayAt3D()
                     int dataPosition = (zIndex*xReal*yReal)+(yIndex*xReal)+xIndex;
                     int place = (zIndex*xCount*yCount)+(yIndex*xCount)+xIndex;
                     double value = currentTally->vals.at(dataPosition);
-                    newData[place] = (uchar)(255*fabs(value)/currentTally->maxAbsValue);
+
+
+                    double currentx = ((xIndex)-bx)/kx;
+                    double currenty = ((yIndex)-by)/ky;
+                    double currentz = ((zIndex)-bz)/kz;
+
+
+                    double r11 = sqrt(powf(currentx-xTumour,2)+powf(currenty-yTumour,2)+powf(currentz-zTumour,2));
+                    if(r11 < r1){
+                        value*=2;
+                    }
+
+                    newData[place] = (uchar)(255*fabs(value)/(2.0*currentTally->maxAbsValue));
                 }
             }
         }
@@ -302,7 +532,11 @@ void MainWindow::initScatter()
     for(int i = 0; i < 256; i++){
         QColor c = QColor(g.color(i,QCPRange(0,256)));
         colorTableSolid.append(c.rgb());
-        c.setAlpha(i);
+        if( i < 20){
+            c.setAlpha(0);
+        }else{
+            c.setAlpha(128);
+        }
         colorTableTransparent.append(c.rgba());
     }
 
